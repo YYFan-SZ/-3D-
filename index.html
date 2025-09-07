@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D贪吃蛇游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+            cursor: none;
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #score {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 200;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            opacity: 0.8;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 300;
+        }
+
+        /* 教程模态框样式 */
+        #tutorialModal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 28px 28px 22px;
+            border-radius: 16px;
+            text-align: left;
+            z-index: 220;
+            display: none;
+            backdrop-filter: blur(10px);
+            width: min(600px, 90vw);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+        }
+        #tutorialModal h2 { margin-bottom: 10px; }
+        #tutorialModal p { margin: 8px 0 6px; line-height: 1.6; opacity: 0.95; }
+        #tutorialModal ul { margin: 8px 0 10px 20px; }
+        #tutorialModal li { margin: 6px 0; line-height: 1.6; opacity: 0.95; }
+        #tutorialModal .btn { margin-top: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div class="loading" id="loading">加载中...</div>
+        
+        <div id="gameUI">
+            <div id="score">分数: 0</div>
+            <div id="length">长度: 1</div>
+        </div>
+        
+        <div id="controls">
+            <button class="btn" id="startBtn">开始游戏</button>
+            <button class="btn" id="pauseBtn">暂停</button>
+            <button class="btn" id="resetBtn">重新开始</button>
+            <!-- New camera buttons -->
+            <button class="btn" id="topViewBtn">顶视角</button>
+            <button class="btn" id="followViewBtn">跟随视角</button>
+            <button class="btn" id="freeViewBtn">自由视角</button>
+            <!-- Tutorial button -->
+            <button class="btn" id="tutorialBtn">教程</button>
+        </div>
+        
+        <div id="gameOver">
+            <h2>游戏结束!</h2>
+            <p id="finalScore">最终分数: 0</p>
+            <button class="btn" id="restartBtn">再来一局</button>
+        </div>
+        
+        <!-- 教程模态框 -->
+        <div id="tutorialModal">
+            <h2>游戏教程</h2>
+            <p>目标：吃到更多食物，变得更长，避免撞到边界或自己的身体。</p>
+            <ul>
+                <li>操作：WASD 或 方向键 控制移动</li>
+                <li>暂停/继续：空格键 或 点击“暂停”按钮</li>
+                <li>视角：点击“顶视角”“跟随视角”“自由视角”可切换相机模式</li>
+                <li>提示：提前规划转向；跟随视角更易观察前进方向；自由视角可拖拽查看全局</li>
+            </ul>
+            <button class="btn" id="closeTutorialBtn">我知道了</button>
+        </div>
+        
+        <div id="instructions">
+            <div>使用 WASD 或 方向键 控制蛇的移动</div>
+            <div>空格键: 暂停/继续</div>
+        </div>
+    </div>
+    
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
